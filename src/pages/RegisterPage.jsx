@@ -26,7 +26,7 @@ const RegisterPage = () => {
     try {
       setLoading(true);
       await register(email, password, userName.trim());
-      navigate('/'); // Navigate to dashboard or desired page after registration
+      navigate('/')
     } catch (err) {
       setError('Failed to create an account: ' + (err.message || 'Please try again.'));
       console.error("Registration error:", err);
@@ -47,7 +47,7 @@ const RegisterPage = () => {
             value={userName} 
             onChange={(e) => setUserName(e.target.value)} 
             required 
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -58,7 +58,7 @@ const RegisterPage = () => {
             value={email} 
             onChange={(e) => setEmail(e.target.value)} 
             required 
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -70,7 +70,7 @@ const RegisterPage = () => {
             onChange={(e) => setPassword(e.target.value)} 
             required 
             minLength="6" 
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="form-input"
           />
         </div>
         <div>
@@ -81,7 +81,7 @@ const RegisterPage = () => {
             value={confirmPassword} 
             onChange={(e) => setConfirmPassword(e.target.value)} 
             required 
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="form-input"
           />
         </div>
         <button 

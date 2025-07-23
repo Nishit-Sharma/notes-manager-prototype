@@ -11,11 +11,9 @@ const LogActivityPage = () => {
   const [existingActivityData, setExistingActivityData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [pageTitle, setPageTitle] = useState('Log New Office Activity');
 
   useEffect(() => {
     if (activityId) {
-      setPageTitle('Edit Office Activity');
       setIsLoading(true);
       setError('');
       const fetchActivity = async () => {
@@ -27,7 +25,6 @@ const LogActivityPage = () => {
           } else {
             console.error("No such activity found!");
             setError('Activity not found. It may have been deleted.');
-            // navigate('/activities', { replace: true }); // REMOVED COMMENTED OUT CODE
           }
         } catch (err) {
           console.error("Error fetching activity: ", err);
@@ -37,23 +34,21 @@ const LogActivityPage = () => {
       };
       fetchActivity();
     } else {
-      setPageTitle('Log New Office Activity');
-      setExistingActivityData(null); // Clear any previous edit data when creating new
+      setExistingActivityData(null);
+      setIsLoading(false);
+      setError('');
     }
   }, [activityId, navigate]);
 
   const handleSave = () => {
-    // After successful save, navigate away. 
-    // If it was an edit, navigate to activities list, if new, maybe to activities or dashboard.
-    // For simplicity, always go to activity list for now.
     navigate('/activities'); 
   };
 
   const handleCancel = () => {
-    navigate(-1); // Go back to the previous page
+    navigate(-1);
   };
 
-  if (isLoading) {
+  if (activityId && isLoading) {
     return <div className="p-6 text-center">Loading activity details...</div>;
   }
 
@@ -68,20 +63,8 @@ const LogActivityPage = () => {
     );
   }
 
-  // If activityId is present but existingActivityData is not yet loaded (and not loading, and no error),
-  // it means we are in edit mode but data is not found (already handled by error state ideally)
-  // or we are switching from edit to new, this ensures form gets null.
-  if (activityId && !existingActivityData && !isLoading && !error) {
-    // This case should ideally be covered by the error state if doc doesn't exist
-    // If we land here, it means fetch completed, no doc, but error wasn't set or loading didn't stop it.
-    // This can happen briefly if navigate happens before state update or due to timing.
-    // Returning null or a specific message can prevent rendering form with stale/no data in edit mode.
-    return <div className="p-6 text-center">Verifying activity data...</div>; 
-  }
-
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* <h1 className="text-2xl font-semibold mb-6">{pageTitle}</h1> */} {/* REMOVED COMMENTED OUT CODE */}
       <LogActivityForm 
         existingActivity={existingActivityData} 
         onSave={handleSave} 

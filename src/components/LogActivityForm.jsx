@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { db, auth } from '../firebaseConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, addDoc, doc, setDoc, serverTimestamp, Timestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -31,31 +31,45 @@ const LogActivityForm = ({ existingActivity, onSave, onCancel }) => {
   const [users, setUsers] = useState([]);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
 
+  const resetFormFields = useCallback((defaultUser = null) => {
+    setActivityTimestamp(new Date());
+    setSelectedClient(null);
+    setContactPerson('');
+    setContactMethod('Phone');
+    setDirection('Incoming');
+    setSubject('');
+    setDetails('');
+    setActionTaken('');
+    setStatus('Open');
+    setPriority('Medium');
+    setFollowUpDate(null);
+    setAssignedToUser(defaultUser);
+  }, []);
+
   useEffect(() => {
     const qUsers = query(collection(db, "users"), orderBy("userName"));
     const unsubUsers = onSnapshot(qUsers, (querySnapshot) => {
       const usersData = querySnapshot.docs.map(doc => ({ value: doc.id, label: doc.data().userName, ...doc.data() }));
       setUsers(usersData);
-      if (!existingActivity && userData && usersData.some(u => u.value === userData.uid)) {
-        setSelectedClient(null);
-        setAssignedToUser(usersData.find(u => u.value === userData.uid));
-      } else if (existingActivity && existingActivity.assignedToUserId && usersData.length > 0) {
-        const assignedUserOption = usersData.find(u => u.value === existingActivity.assignedToUserId);
-        setAssignedToUser(assignedUserOption || null);
+      
+      const currentUserOption = userData && usersData.length > 0 ? usersData.find(u => u.value === userData.uid) : null;
+
+      if (existingActivity) {
+        const assignedUserOption = existingActivity.assignedToUserId && usersData.length > 0 ? 
+                                   usersData.find(u => u.value === existingActivity.assignedToUserId) : null;
+        setAssignedToUser(assignedUserOption);
+      } else {
+        resetFormFields(currentUserOption); 
       }
     }, (error) => {
       console.error("Error fetching users for dropdown: ", error);
     });
     return () => unsubUsers();
-  }, [existingActivity, userData]);
+  }, [existingActivity, userData, resetFormFields]);
 
   useEffect(() => {
     if (existingActivity) {
       setActivityTimestamp(existingActivity.activityTimestamp?.toDate() || new Date());
-      if (existingActivity.clientId && clients.length > 0) {
-        const clientOption = clients.find(c => c.value === existingActivity.clientId);
-        setSelectedClient(clientOption || null);
-      }
       setContactPerson(existingActivity.contactPerson || '');
       setContactMethod(existingActivity.contactMethod || 'Phone');
       setDirection(existingActivity.direction || 'Incoming');
@@ -66,24 +80,10 @@ const LogActivityForm = ({ existingActivity, onSave, onCancel }) => {
       setPriority(existingActivity.priority || 'Medium');
       setFollowUpDate(existingActivity.followUpDate?.toDate() || null);
     } else {
-      setActivityTimestamp(new Date());
-      setSelectedClient(null);
-      setContactPerson('');
-      setContactMethod('Phone');
-      setDirection('Incoming');
-      setSubject('');
-      setDetails('');
-      setActionTaken('');
-      setStatus('Open');
-      setPriority('Medium');
-      setFollowUpDate(null);
-      if (userData && users.length > 0 && users.some(u => u.value === userData.uid)) {
-        setAssignedToUser(users.find(u => u.value === userData.uid));
-      } else {
-        setAssignedToUser(null);
-      }
+      const currentUserOption = userData && users.length > 0 ? users.find(u => u.value === userData.uid) : null;
+      resetFormFields(currentUserOption);
     }
-  }, [existingActivity, clients, users, userData]);
+  }, [existingActivity, userData, users, resetFormFields]);
 
   useEffect(() => {
     const qClients = query(collection(db, "clients"), orderBy("clientName"));
@@ -93,6 +93,7 @@ const LogActivityForm = ({ existingActivity, onSave, onCancel }) => {
       if (existingActivity && existingActivity.clientId) {
         const clientOption = clientsData.find(c => c.value === existingActivity.clientId);
         setSelectedClient(clientOption || null);
+      } else if (!existingActivity) {
       }
     }, (error) => {
       console.error("Error fetching clients for dropdown: ", error);
@@ -100,33 +101,24 @@ const LogActivityForm = ({ existingActivity, onSave, onCancel }) => {
     return () => unsubscribeClients();
   }, [existingActivity]);
 
-  const handleClientChange = (selectedOption) => {
-    setSelectedClient(selectedOption);
-  };
+  const handleClientChange = (selectedOption) => setSelectedClient(selectedOption);
+  const handleAssignedToChange = (selectedOption) => setAssignedToUser(selectedOption);
+  const handleOpenClientModal = () => setIsClientModalOpen(true);
+  const handleCloseClientModal = () => setIsClientModalOpen(false);
 
-  const handleAssignedToChange = (selectedOption) => {
-    setAssignedToUser(selectedOption);
-  };
-
-  const handleOpenClientModal = () => {
-    setIsClientModalOpen(true);
-  };
-
-  const handleCloseClientModal = () => {
-    setIsClientModalOpen(false);
-  };
-
-  const handleClientSaved = (savedClient) => {
+  const handleClientSaved = useCallback((savedClient) => {
     const newClientOption = { value: savedClient.id, label: savedClient.clientName, ...savedClient };    
     setClients(prevClients => {
         const filtered = prevClients.filter(c => c.value !== savedClient.id);
-        return [...filtered, newClientOption].sort((a,b) => a.label.localeCompare(b.label));
+        const updatedClients = [...filtered, newClientOption];
+        updatedClients.sort((a,b) => a.label.localeCompare(b.label));
+        return updatedClients;
     });
     setSelectedClient(newClientOption);
     handleCloseClientModal();
     setMessage('New client added and selected.');
     setTimeout(() => setMessage(''), 3000);
-  };
+  }, [handleCloseClientModal]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -141,55 +133,38 @@ const LogActivityForm = ({ existingActivity, onSave, onCancel }) => {
 
     const activityData = {
       activityTimestamp: Timestamp.fromDate(activityTimestamp),
-      clientId: selectedClient.value,
-      clientName: selectedClient.label,
-      contactPerson,
-      contactMethod,
-      direction,
-      subject,
-      details,
-      actionTaken,
-      status,
-      priority,
+      clientId: selectedClient.value, clientName: selectedClient.label,
+      contactPerson, contactMethod, direction, subject, details, actionTaken, status, priority,
       followUpDate: followUpDate ? Timestamp.fromDate(followUpDate) : null,
       assignedToUserId: assignedToUser ? assignedToUser.value : null,
       assignedToName: assignedToUser ? assignedToUser.label : null,
       lastModifiedAt: serverTimestamp(),
     };
 
+    if (existingActivity && existingActivity.id) {
+      activityData.modifiedByUserId = userData?.uid || null;
+      activityData.modifiedByUserName = userData?.userName || auth.currentUser?.email || null;
+      activityData.createdAt = existingActivity.createdAt || serverTimestamp();
+    } else {
+      activityData.createdByUserId = userData?.uid || null;
+      activityData.createdByUserName = userData?.userName || auth.currentUser?.email || null;
+      activityData.createdAt = serverTimestamp();
+    }
+
     try {
       if (existingActivity && existingActivity.id) {
         const activityRef = doc(db, 'activityLogs', existingActivity.id);
-        await setDoc(activityRef, { ...activityData, createdAt: existingActivity.createdAt || serverTimestamp() }, { merge: true });
+        await setDoc(activityRef, activityData, { merge: true });
         setMessage('Activity updated successfully!');
       } else {
-        await addDoc(collection(db, 'activityLogs'), {
-          ...activityData,
-          createdAt: serverTimestamp(), 
-        });
+        await addDoc(collection(db, 'activityLogs'), activityData);
         setMessage('Activity logged successfully!');
-        if (!existingActivity && !onSave) {
-            setActivityTimestamp(new Date());
-            setSelectedClient(null);
-            setContactPerson('');
-            setContactMethod('Phone');
-            setDirection('Incoming');
-            setSubject('');
-            setDetails('');
-            setActionTaken('');
-            setStatus('Open');
-            setPriority('Medium');
-            setFollowUpDate(null);
-            if (userData && users.length > 0 && users.some(u => u.value === userData.uid)) {
-                setAssignedToUser(users.find(u => u.value === userData.uid));
-            } else {
-                setAssignedToUser(null);
-            }
+        if (!onSave) {
+            const currentUserOption = userData && users.length > 0 ? users.find(u => u.value === userData.uid) : null;
+            resetFormFields(currentUserOption);
         }
       }
-      if (onSave) {
-        onSave();
-      }
+      if (onSave) onSave(activityData);
     } catch (error) {
       console.error("Error saving activity: ", error);
       setMessage(`Failed to save activity: ${error.message}`);
@@ -234,7 +209,7 @@ const LogActivityForm = ({ existingActivity, onSave, onCancel }) => {
                     onChange={handleClientChange}
                     placeholder="Select or type to search..."
                     isClearable
-                    className="react-select-container"
+                    className="react-select-container flex-grow"
                     classNamePrefix="react-select"
                     required
                 />
@@ -257,7 +232,7 @@ const LogActivityForm = ({ existingActivity, onSave, onCancel }) => {
                 onChange={handleAssignedToChange} 
                 placeholder="Select staff member..." 
                 isClearable 
-                className="react-select-container" 
+                className="react-select-container"
                 classNamePrefix="react-select"
             />
           </div>

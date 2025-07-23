@@ -7,8 +7,7 @@ const ProtectedRoute = ({ children }) => {
   const location = useLocation();
 
   if (loading) {
-    // You might want to show a loading spinner here instead of just null
-    return <div className="text-center p-10">Checking authentication...</div>;
+    return <div className="p-10 text-center">Checking authentication...</div>;
   }
 
   if (!currentUser) {

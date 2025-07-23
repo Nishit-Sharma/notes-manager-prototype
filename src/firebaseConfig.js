@@ -1,27 +1,42 @@
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth"; // If you plan to use Firebase Authentication
+import { getAuth } from "firebase/auth";
 
-// Your web app's Firebase configuration
-// IMPORTANT: Replace with your actual Firebase config object
 const firebaseConfig = {
-  apiKey: "AIzaSyCoBu37Dr27uqKqnDWjtkCXhfeltv_0vJ0",
-  authDomain: "accounting-activity-tracker.firebaseapp.com",
-  projectId: "accounting-activity-tracker",
-  storageBucket: "accounting-activity-tracker.firebasestorage.app",
-  messagingSenderId: "786349813929",
-  appId: "1:786349813929:web:62bb9fd07c5c931819f9b8",
-  measurementId: "G-MGK7BBNP8K"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app;
+let db;
+let authInstance;
 
-// Initialize Firestore
-const db = getFirestore(app);
+if (
+  firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY" &&
+  firebaseConfig.projectId
+) {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    authInstance = getAuth(app);
+  } catch (error) {
+    console.error("Firebase initialization failed:", error);
+    console.warn("Please ensure your Firebase environment variables (VITE_FIREBASE_*) are correctly set in your .env file.");
+  }
+} else {
+  console.warn(
+    "Firebase configuration is missing or using placeholder values. " +
+    "Please create a .env file with your Firebase project credentials (VITE_FIREBASE_*). " +
+    "Refer to .env.example (if available) or the Firebase console."
+  );
+  app = null;
+  db = null;
+  authInstance = null;
+}
 
-// Initialize Firebase Authentication (optional, but recommended for user management)
-const auth = getAuth(app);
-
-export { db, auth, app }; // Export auth as well if you use it 
+export { db, authInstance as auth, app }; 

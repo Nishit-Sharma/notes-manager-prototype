@@ -1,0 +1,2 @@
+export const statusOptions = ["Open", "In Progress", "Resolved", "Needs Follow-up", "Waiting for Client"];
+export const methodOptions = ["Phone", "Email", "In-Person Meeting", "Virtual Meeting", "Document Submission", "Internal Task"]; 
